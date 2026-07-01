@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050510">
+  <title>TruthLens — لوحة التحكم</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="particleCanvas"></canvas>
+    <div class="bg-mesh"></div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="admin-container">
+      <header class="admin-header">
+        <div class="admin-header-brand">
+          <div class="admin-logo-wrap">
+            <svg class="admin-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="adminGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6c5ce7"/>
+                  <stop offset="100%" style="stop-color:#00cec9"/>
+                </linearGradient>
+              </defs>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="url(#adminGrad)" stroke-width="2.5" opacity="0.7"/>
+              <circle cx="24" cy="24" r="12" fill="url(#adminGrad)" opacity="0.15"/>
+              <circle cx="24" cy="24" r="5" fill="url(#adminGrad)" opacity="0.8"/>
+              <path d="M24 4 L24 44 M4 24 L44 24" stroke="url(#adminGrad)" stroke-width="1" opacity="0.2"/>
+            </svg>
+          </div>
+          <div class="admin-header-text">
+            <h1 class="admin-title">عدسة الحق</h1>
+            <p class="admin-subtitle">لوحة التحكم المباشرة</p>
+          </div>
+        </div>
+        <div class="admin-header-status">
+          <div class="admin-status">
+            <span class="status-dot"></span>
+            <span id="connectionStatus">متصل</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="control" onclick="switchTab('control')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          <span>التحكم</span>
+        </button>
+        <button class="admin-tab" data-tab="questions" onclick="switchTab('questions')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>الأسئلة</span>
+        </button>
+        <button class="admin-tab" data-tab="players" onclick="switchTab('players')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <span>اللاعبون</span>
+        </button>
+        <button class="admin-tab" data-tab="qr" onclick="switchTab('qr')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="21" y="14" width="0" height="0"/><rect x="18" y="18" width="3" height="3"/><rect x="21" y="21" width="0" height="0"/></svg>
+          <span>رمز QR</span>
+        </button>
+      </div>
+
+      <!-- CONTROL TAB -->
+      <div class="admin-panel active" id="panel-control">
+        <div class="admin-grid">
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <span class="admin-card-icon">📊</span>
+              <h3 class="card-title">حالة اللعبة</h3>
+            </div>
+            <div class="card-body">
+              <div class="state-indicator" id="gameStateIndicator">
+                <span class="state-dot idle"></span>
+                <span id="gameStateText">لم تبدأ بعد</span>
+              </div>
+              <div class="card-stats mt-2">
+                <div class="card-stat">
+                  <span class="card-stat-value" id="totalQuestionsCount">0</span>
+                  <span class="card-stat-label">أسئلة</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value" id="connectedPlayersCount">0</span>
+                  <span class="card-stat-label">لاعبون</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value" id="currentQuestionNum">-</span>
+                  <span class="card-stat-label">السؤال الحالي</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <span class="admin-card-icon">🎮</span>
+              <h3 class="card-title">أدوات التحكم</h3>
+            </div>
+            <div class="card-body flex flex-col gap-2">
+              <button class="btn btn-accent btn-block btn-glow" id="startGameBtn" onclick="startGame()">
+                <span>▶ ابدأ اللعبة</span>
+              </button>
+              <button class="btn btn-outline btn-block" id="endQuestionBtn" onclick="endQuestion()" disabled>
+                <span>⏹ أنهِ السؤال مبكرًا</span>
+              </button>
+              <button class="btn btn-danger btn-block" id="resetGameBtn" onclick="resetGame()">
+                <span>🔄 إعادة تعيين</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Cheat Warnings Panel -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <span class="admin-card-icon">⚠️</span>
+              <h3 class="card-title">تنبيهات الغش</h3>
+            </div>
+            <div class="card-body">
+              <div id="cheatWarningsList" class="cheat-warnings-list">
+                <p class="text-muted text-center">لا توجد تنبيهات حتى الآن</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card w-full">
+            <div class="admin-card-header">
+              <span class="admin-card-icon">🏆</span>
+              <h3 class="card-title">لوحة المتصدرين المباشرة</h3>
+            </div>
+            <div class="card-body">
+              <div id="adminLeaderboard" class="admin-leaderboard">
+                <p class="text-muted text-center">لا يوجد لاعبون حتى الآن</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUESTIONS TAB -->
+      <div class="admin-panel" id="panel-questions">
+        <div class="admin-card w-full">
+          <div class="admin-card-header">
+            <span class="admin-card-icon">📝</span>
+            <div class="flex items-center justify-between w-full flex-wrap gap-2">
+              <h3 class="card-title" style="margin-bottom:0;">الأسئلة (<span id="questionCountLabel">0</span>)</h3>
+              <button class="btn btn-accent btn-small btn-glow" onclick="showAddForm()">+ إضافة سؤال</button>
+            </div>
+          </div>
+
+          <!-- Add/Edit Form -->
+          <div id="questionForm" style="display:none;" class="question-form mb-3">
+            <h4 id="formTitle" class="mb-2">إضافة سؤال جديد</h4>
+            <input type="hidden" id="editQuestionId" value="">
+            <div class="form-group">
+              <label>النوع</label>
+              <select class="input-field input-glow" id="qType" onchange="updateFormFields()">
+                <option value="multiple-choice">اختيار من متعدد</option>
+                <option value="true-false">ص أم خطأ</option>
+                <option value="fill-blank">أكمل الفراغ</option>
+                <option value="matching">تطابق</option>
+                <option value="ordering">رتِّب</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>التصنيف</label>
+              <input class="input-field input-glow" id="qCategory" placeholder="مثال: الهوية في المسيح">
+            </div>
+            <div class="form-group">
+              <label>نص السؤال</label>
+              <textarea class="input-field input-glow" id="qText" rows="3" placeholder="أدخل السؤال..."></textarea>
+            </div>
+
+            <!-- MC Fields -->
+            <div id="mcFields">
+              <div class="form-group">
+                <label>الخيار أ</label>
+                <input class="input-field mc-option" data-idx="0" placeholder="الخيار أ">
+              </div>
+              <div class="form-group">
+                <label>الخيار ب</label>
+                <input class="input-field mc-option" data-idx="1" placeholder="الخيار ب">
+              </div>
+              <div class="form-group">
+                <label>الخيار ج</label>
+                <input class="input-field mc-option" data-idx="2" placeholder="الخيار ج">
+              </div>
+              <div class="form-group">
+                <label>الخيار د</label>
+                <input class="input-field mc-option" data-idx="3" placeholder="الخيار د">
+              </div>
+              <div class="form-group">
+                <label>الإجابة الصحيحة (0=أ، 1=ب، 2=ج، 3=د)</label>
+                <select class="input-field" id="mcCorrect">
+                  <option value="0">أ</option>
+                  <option value="1">ب</option>
+                  <option value="2">ج</option>
+                  <option value="3">د</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- T/F Fields -->
+            <div id="tfFields" style="display:none;">
+              <div class="form-group">
+                <label>الإجابة الصحيحة</label>
+                <select class="input-field" id="tfCorrect">
+                  <option value="true">صحيح</option>
+                  <option value="false">خطأ</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Fill Blank Fields -->
+            <div id="fbFields" style="display:none;">
+              <div class="form-group">
+                <label>الإجابة الصحيحة</label>
+                <input class="input-field" id="fbCorrect" placeholder="الإجابة الرئيسية">
+              </div>
+              <div class="form-group">
+                <label>بدائل مقبولة (مفصولة بفاصلة)</label>
+                <input class="input-field" id="fbAlternatives" placeholder="بديل1، بديل2، بديل3">
+              </div>
+            </div>
+
+            <!-- Matching Fields -->
+            <div id="matchFields" style="display:none;">
+              <div class="form-group">
+                <label>أزواج التطابق (يسار | يمين في كل سطر)</label>
+                <textarea class="input-field" id="matchPairs" rows="5" placeholder="أنا وحيد | الله لا يتركك أبدًا (عب 13:5)&#10;أنا لست كافيًا | قوة الله كاملة في الضعف (2 كو 12:9)"></textarea>
+              </div>
+            </div>
+
+            <!-- Ordering Fields -->
+            <div id="orderFields" style="display:none;">
+              <div class="form-group">
+                <label>العناصر بالترتيب الصحيح (عنصر في كل سطر)</label>
+                <textarea class="input-field" id="orderItems" rows="5" placeholder="الخطوة الأولى&#10;الخطوة الثانية&#10;الخطوة الثالثة"></textarea>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>الشرح</label>
+              <textarea class="input-field" id="qExplanation" rows="2" placeholder="اشرح الإجابة الصحيحة..."></textarea>
+            </div>
+
+            <div class="flex gap-2 mt-2">
+              <button class="btn btn-accent btn-glow" onclick="saveQuestion()">حفظ السؤال</button>
+              <button class="btn btn-outline" onclick="cancelForm()">إلغاء</button>
+            </div>
+          </div>
+
+          <!-- Questions List -->
+          <div id="questionsList" class="questions-list"></div>
+        </div>
+      </div>
+
+      <!-- PLAYERS TAB -->
+      <div class="admin-panel" id="panel-players">
+        <div class="admin-card w-full">
+          <div class="admin-card-header">
+            <span class="admin-card-icon">👥</span>
+            <h3 class="card-title">اللاعبون (<span id="playerCountLabel">0</span>)</h3>
+          </div>
+          <div class="card-body">
+            <div id="playersList" class="players-list">
+              <p class="text-muted text-center">لا يوجد لاعبون متصلون</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR CODE TAB -->
+      <div class="admin-panel" id="panel-qr">
+        <div class="admin-card text-center" style="max-width:480px; margin:0 auto;">
+          <div class="admin-card-header justify-center">
+            <span class="admin-card-icon">📱</span>
+            <h3 class="card-title">رمز الانضمام</h3>
+          </div>
+          <div class="card-body flex flex-col items-center">
+            <p class="text-secondary mb-3">يمكن للاعبين مسح هذا الرمز للانضمام إلى اللعبة</p>
+            <div class="qr-wrapper" id="qrWrapper">
+              <img id="qrImage" alt="رمز QR" style="display:none; border-radius:12px;">
+              <p id="qrLoading">جارٍ إنشاء رمز QR...</p>
+            </div>
+            <p class="text-accent mt-3" id="qrUrl" style="font-weight:600;"></p>
+            <button class="btn btn-outline btn-glow mt-2" onclick="refreshQR()">🔄 تحديث رمز QR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

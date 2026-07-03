@@ -71,8 +71,9 @@
       <div class="glass-card text-center">
         <div class="card-icon">✨</div>
         <h2 class="card-title-lg">قبل أن نبدأ</h2>
-        <p class="text-secondary mb-3">أدخل اسمك للانضمام إلى الجلسة</p>
+        <p class="text-secondary mb-3">أدخل اسمك واسم الجلسة للانضمام</p>
         <div class="name-input-group mx-auto">
+          <input type="text" class="input-field input-glow" id="sessionInput" placeholder="اسم الجلسة (مثال: مجموعة الأحد)" maxlength="40" autocomplete="off">
           <input type="text" class="input-field input-glow" id="nameInput" placeholder="اسمك" maxlength="20" autocomplete="off">
           <button class="btn btn-primary btn-block btn-glow" id="joinBtn" onclick="joinGame()">
             <span>انضم للجلسة</span>

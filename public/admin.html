@@ -17,6 +17,26 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- Session Modal -->
+    <div class="session-modal" id="sessionModal">
+      <div class="session-modal-content glass-card">
+        <div class="card-icon">📋</div>
+        <h2 style="font-size:1.4rem; margin-bottom:0.5rem;">اسم الجلسة</h2>
+        <p class="text-secondary mb-3">أدخل اسم الجلسة لبدء امتحان جديد. كل جلسة لها بيانات منفصلة.</p>
+        <div class="name-input-group mx-auto">
+          <input type="text" class="input-field input-glow" id="sessionNameInput" placeholder="مثال: مجموعة الأحد، مجموعة الثلاثاء..." maxlength="40" autocomplete="off">
+          <button class="btn btn-primary btn-block btn-glow" id="setSessionBtn" onclick="setSession()">
+            <span>بدء الجلسة</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>
+          </button>
+        </div>
+        <div class="mt-2" id="existingSessionsList" style="display:none;">
+          <p class="text-muted" style="font-size:0.85rem;">أو اختر جلسة سابقة:</p>
+          <div id="previousSessions" class="previous-sessions-list"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="admin-container">
       <header class="admin-header">
         <div class="admin-header-brand">
@@ -40,6 +60,10 @@
           </div>
         </div>
         <div class="admin-header-status">
+          <div class="session-badge" id="sessionBadge" style="display:none;">
+            <span class="session-dot"></span>
+            <span id="currentSessionName">—</span>
+          </div>
           <div class="admin-status">
             <span class="status-dot"></span>
             <span id="connectionStatus">متصل</span>
@@ -111,6 +135,9 @@
               <button class="btn btn-danger btn-block" id="resetGameBtn" onclick="resetGame()">
                 <span>🔄 إعادة تعيين</span>
               </button>
+              <button class="btn btn-outline btn-block" id="changeSessionBtn" onclick="showSessionModal()">
+                <span>📋 تغيير الجلسة</span>
+              </button>
             </div>
           </div>
 
@@ -130,11 +157,24 @@
           <div class="admin-card w-full">
             <div class="admin-card-header">
               <span class="admin-card-icon">🏆</span>
-              <h3 class="card-title">لوحة المتصدرين المباشرة</h3>
+              <h3 class="card-title">لوحة المتصدرين — الجلسة الحالية</h3>
             </div>
             <div class="card-body">
               <div id="adminLeaderboard" class="admin-leaderboard">
                 <p class="text-muted text-center">لا يوجد لاعبون حتى الآن</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- All Sessions Leaderboard -->
+          <div class="admin-card w-full">
+            <div class="admin-card-header">
+              <span class="admin-card-icon">📋</span>
+              <h3 class="card-title">كل الجلسات</h3>
+            </div>
+            <div class="card-body">
+              <div id="allSessionsLeaderboard" class="all-sessions-leaderboard">
+                <p class="text-muted text-center">لا توجد جلسات حتى الآن</p>
               </div>
             </div>
           </div>
@@ -152,6 +192,12 @@
             </div>
           </div>
 
+          <!-- Categories Section -->
+          <div id="categoriesSection" class="categories-section mb-3">
+            <h4 class="mb-2">📂 الأقسام</h4>
+            <div id="categoriesList" class="categories-list"></div>
+          </div>
+
           <!-- Add/Edit Form -->
           <div id="questionForm" style="display:none;" class="question-form mb-3">
             <h4 id="formTitle" class="mb-2">إضافة سؤال جديد</h4>
@@ -162,13 +208,15 @@
                 <option value="multiple-choice">اختيار من متعدد</option>
                 <option value="true-false">ص أم خطأ</option>
                 <option value="fill-blank">أكمل الفراغ</option>
-                <option value="matching">تطابق</option>
+                <option value="matching">طابق</option>
                 <option value="ordering">رتِّب</option>
               </select>
             </div>
             <div class="form-group">
-              <label>التصنيف</label>
-              <input class="input-field input-glow" id="qCategory" placeholder="مثال: الهوية في المسيح">
+              <label>القسم</label>
+              <select class="input-field input-glow" id="qCategory">
+                <!-- Populated dynamically -->
+              </select>
             </div>
             <div class="form-group">
               <label>نص السؤال</label>
@@ -264,7 +312,7 @@
         <div class="admin-card w-full">
           <div class="admin-card-header">
             <span class="admin-card-icon">👥</span>
-            <h3 class="card-title">اللاعبون (<span id="playerCountLabel">0</span>)</h3>
+            <h3 class="card-title">اللاعبون — الجلسة الحالية (<span id="playerCountLabel">0</span>)</h3>
           </div>
           <div class="card-body">
             <div id="playersList" class="players-list">

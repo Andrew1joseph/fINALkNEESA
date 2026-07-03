@@ -1,5 +1,6 @@
 const socket = io();
 let playerName = '';
+let playerSession = '';
 let currentQuestion = null;
 let timerInterval = null;
 let timeRemaining = 0;
@@ -10,6 +11,7 @@ let cheatWarnings = 0;
 const MAX_CHEAT_WARNINGS = 3;
 let quizActive = false;
 let autoAdvanceTimeout = null;
+let playerFinished = false;
 
 /* ========== PARTICLE ANIMATION ========== */
 function initParticles() {
@@ -197,24 +199,36 @@ function launchConfetti() {
 
 /* ========== JOIN ========== */
 function joinGame() {
-  const input = document.getElementById('nameInput');
-  const name = input.value.trim();
+  const sessionInput = document.getElementById('sessionInput');
+  const nameInput = document.getElementById('nameInput');
+  const sessionName = sessionInput ? sessionInput.value.trim() : '';
+  const name = nameInput.value.trim();
+  if (!sessionName) {
+    showToast('يرجى إدخال اسم الجلسة', 'error');
+    if (sessionInput) sessionInput.focus();
+    return;
+  }
   if (!name) {
     showToast('يرجى إدخال اسمك', 'error');
-    input.focus();
+    nameInput.focus();
     return;
   }
   SoundFX.resume();
   SoundFX.join();
   playerName = name;
-  socket.emit('player:join', name);
+  playerSession = sessionName;
+  socket.emit('player:join', { name: name, session: sessionName });
 }
 
 document.getElementById('nameInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') joinGame();
 });
+document.getElementById('sessionInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('nameInput').focus();
+});
 
 socket.on('player:joined', (data) => {
+  if (data.session) playerSession = data.session;
   document.getElementById('waitingName').textContent = data.name;
   showScreen('waitingScreen');
 });
@@ -264,14 +278,17 @@ function readyForQuiz() {
 }
 
 socket.on('game:question', (data) => {
+  // Clear any pending auto-advance from previous question
+  clearTimeout(autoAdvanceTimeout);
+  
   currentQuestion = data.question;
   timerDuration = data.timerDuration || 30;
   hasAnswered = false;
   currentAnswer = null;
   quizActive = true;
   cheatWarnings = 0;
+  playerFinished = false;
   dismissCheatOverlay();
-  clearTimeout(autoAdvanceTimeout);
 
   updateProgress(data.progress);
   renderQuestion(data.question);
@@ -340,7 +357,7 @@ function renderQuestion(question) {
     'multiple-choice': 'اختيار من متعدد',
     'true-false': 'ص أم خطأ',
     'fill-blank': 'أكمل الفراغ',
-    'matching': 'تطابق',
+    'matching': 'طابق',
     'ordering': 'رتِّب'
   };
   document.getElementById('questionTypeBadge').textContent = typeLabels[question.type] || question.type;
@@ -478,7 +495,7 @@ function renderOrdering(question, container) {
     el.className = 'order-item';
     el.draggable = true;
     el.dataset.originalIndex = item.originalIndex;
-    el.innerHTML = `<span class="order-number">${displayIdx + 1}</span><span class="order-text">${item.text}</span><span class="order-grip">⠿</span>`;
+    el.innerHTML = `<span class="order-number">${displayIdx + 1}</span><span class="order-text">${item.text}</span><span class="order-grip">⿿</span>`;
     el.addEventListener('dragstart', handleDragStart);
     el.addEventListener('dragover', handleDragOver);
     el.addEventListener('dragenter', handleDragEnter);
@@ -620,6 +637,8 @@ socket.on('game:questionEnd', (data) => {
   if (data.explanation && !document.querySelector('.explanation-box')) {
     document.getElementById('explanationArea').innerHTML = `<div class="explanation-box"><strong>💡 رؤية:</strong> ${data.explanation}</div>`;
   }
+  // No need for autoAdvanceTimeout here — the server handles auto-advance
+  // after EXPLANATION_DELAY and sends the next game:question event
 });
 
 function showCorrectAnswer(data) {
@@ -633,6 +652,16 @@ function showCorrectAnswer(data) {
   }
 }
 
+// This player has finished all their questions
+socket.on('game:playerFinished', (data) => {
+  stopTimer();
+  quizActive = false;
+  playerFinished = true;
+  SoundFX.finish();
+  launchConfetti();
+  setTimeout(() => socket.emit('game:getResults'), 500);
+});
+
 socket.on('game:answerCount', (data) => {
   document.getElementById('answerCountText').textContent = `${data.answered}/${data.total} أجابوا`;
   const pct = data.total > 0 ? Math.round((data.answered / data.total) * 100) : 0;
@@ -643,9 +672,12 @@ socket.on('game:answerCount', (data) => {
 socket.on('game:finished', () => {
   stopTimer();
   quizActive = false;
-  SoundFX.finish();
-  launchConfetti();
-  setTimeout(() => socket.emit('game:getResults'), 500);
+  // If this player hasn't finished yet, get results
+  if (!playerFinished) {
+    SoundFX.finish();
+    launchConfetti();
+    setTimeout(() => socket.emit('game:getResults'), 500);
+  }
 });
 
 socket.on('game:results', (results) => {
@@ -698,6 +730,7 @@ socket.on('game:reset', () => {
   currentQuestion = null;
   hasAnswered = false;
   currentAnswer = null;
+  playerFinished = false;
   clearTimeout(autoAdvanceTimeout);
   dismissCheatOverlay();
   showScreen('welcomeScreen');
@@ -705,7 +738,7 @@ socket.on('game:reset', () => {
 });
 
 socket.on('connect_error', () => showToast('فُقد الاتصال. جارٍ إعادة الاتصال...', 'error'));
-socket.on('connect', () => { if (playerName) socket.emit('player:join', playerName); });
+socket.on('connect', () => { if (playerName) socket.emit('player:join', { name: playerName, session: playerSession }); });
 
 document.addEventListener('click', () => SoundFX.resume(), { once: true });
 document.addEventListener('touchstart', () => SoundFX.resume(), { once: true });

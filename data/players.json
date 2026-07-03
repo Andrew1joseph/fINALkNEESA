@@ -1,47 +1,42 @@
 {
-  "test": {
-    "name": "test",
-    "correctAnswers": 2,
-    "wrongAnswers": 4,
-    "totalScore": 302,
-    "isOnline": false,
-    "lastSeen": 1782932505648,
-    "lastSessionScore": 302
+  "مجموعة الأحد": {
+    "أحمد": {
+      "name": "أحمد",
+      "correctAnswers": 0,
+      "wrongAnswers": 0,
+      "totalScore": 0,
+      "isOnline": false,
+      "lastSeen": 1783088760417,
+      "lastSessionScore": 0
+    }
   },
-  "ب": {
-    "name": "ب",
-    "correctAnswers": 0,
-    "wrongAnswers": 1,
-    "totalScore": 0,
-    "isOnline": false,
-    "lastSeen": 1782912699800,
-    "lastSessionScore": 0
-  },
-  "..": {
-    "name": "..",
-    "correctAnswers": 1,
-    "wrongAnswers": 1,
-    "totalScore": 158,
-    "isOnline": false,
-    "lastSeen": 1782913374708,
-    "lastSessionScore": 0
-  },
-  "دودو": {
-    "name": "دودو",
-    "correctAnswers": 2,
-    "wrongAnswers": 7,
-    "totalScore": 284,
-    "isOnline": false,
-    "lastSeen": 1782913140705,
-    "lastSessionScore": 284
-  },
-  ".": {
-    "name": ".",
-    "correctAnswers": 0,
-    "wrongAnswers": 0,
-    "totalScore": 0,
-    "isOnline": false,
-    "lastSeen": 1782932613891,
-    "lastSessionScore": 0
+  "تيست": {
+    "pc": {
+      "name": "pc",
+      "correctAnswers": 10,
+      "wrongAnswers": 18,
+      "totalScore": 1534,
+      "isOnline": false,
+      "lastSeen": 1783095048307,
+      "lastSessionScore": 1534
+    },
+    "تلفون": {
+      "name": "تلفون",
+      "correctAnswers": 14,
+      "wrongAnswers": 15,
+      "totalScore": 2074,
+      "isOnline": false,
+      "lastSeen": 1783095092747,
+      "lastSessionScore": 2074
+    },
+    "جديد": {
+      "name": "جديد",
+      "correctAnswers": 0,
+      "wrongAnswers": 0,
+      "totalScore": 0,
+      "isOnline": false,
+      "lastSeen": 1783095063983,
+      "lastSessionScore": 0
+    }
   }
 }

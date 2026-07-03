@@ -1,8 +1,10 @@
 const socket = io();
 let questions = [];
+let categories = [];
 let players = [];
 let gameActive = false;
 let cheatWarningsLog = [];
+let currentSession = null;
 
 function switchTab(tabName) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
@@ -24,10 +26,60 @@ function showToast(message, type) {
   }, 2500);
 }
 
+/* ========== SESSION MANAGEMENT ========== */
+function showSessionModal() {
+  document.getElementById('sessionModal').classList.add('active');
+  document.getElementById('sessionNameInput').focus();
+}
+
+function hideSessionModal() {
+  document.getElementById('sessionModal').classList.remove('active');
+}
+
+function setSession() {
+  const input = document.getElementById('sessionNameInput');
+  const name = input.value.trim();
+  if (!name) {
+    showToast('يرجى إدخال اسم الجلسة', 'error');
+    input.focus();
+    return;
+  }
+  socket.emit('admin:setSession', name);
+  currentSession = name;
+  updateSessionBadge(name);
+  hideSessionModal();
+  showToast(`تم تعيين الجلسة: ${name}`, 'success');
+}
+
+function selectExistingSession(name) {
+  document.getElementById('sessionNameInput').value = name;
+  setSession();
+}
+
+function updateSessionBadge(name) {
+  const badge = document.getElementById('sessionBadge');
+  const nameEl = document.getElementById('currentSessionName');
+  if (name) {
+    badge.style.display = 'inline-flex';
+    nameEl.textContent = name;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+document.getElementById('sessionNameInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') setSession();
+});
+
 /* ========== GAME CONTROLS ========== */
 function startGame() {
+  if (!currentSession) {
+    showSessionModal();
+    showToast('يرجى تعيين اسم الجلسة أولاً', 'error');
+    return;
+  }
   socket.emit('game:start');
-  showToast('بدأت اللعبة! الأسئلة ستم تلقائياً', 'success');
+  showToast('بدأت اللعبة! الأسئلة ستتم تلقائياً', 'success');
 }
 
 function endQuestion() {
@@ -51,8 +103,12 @@ socket.on('game:started', () => {
 });
 
 socket.on('game:question', (data) => {
-  document.getElementById('currentQuestionNum').textContent = data.progress.current;
   document.getElementById('endQuestionBtn').disabled = false;
+  // Update question number from first active player's progress
+  const activePlayer = players.find(p => !p.finished);
+  if (activePlayer) {
+    document.getElementById('currentQuestionNum').textContent = activePlayer.currentQuestionIndex;
+  }
 });
 
 socket.on('game:questionEnd', () => {
@@ -187,6 +243,64 @@ function renderAdminLeaderboard(leaderboard) {
   container.innerHTML = html;
 }
 
+/* ========== ALL SESSIONS LEADERBOARD ========== */
+socket.on('admin:sessionsUpdate', (sessionsData) => {
+  renderAllSessionsLeaderboard(sessionsData);
+  updatePreviousSessions(sessionsData);
+});
+
+function renderAllSessionsLeaderboard(sessionsData) {
+  const container = document.getElementById('allSessionsLeaderboard');
+  const sessionNames = Object.keys(sessionsData);
+  if (sessionNames.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center">لا توجد جلسات حتى الآن</p>';
+    return;
+  }
+  
+  let html = '';
+  for (const sessionName of sessionNames) {
+    const lb = sessionsData[sessionName];
+    const isActive = sessionName === currentSession;
+    html += `<div class="session-leaderboard-section ${isActive ? 'active-session' : ''}">`;
+    html += `<div class="session-header">`;
+    html += `<span class="session-name">${isActive ? '🔵' : '⚪'} ${sessionName}</span>`;
+    html += `<span class="session-player-count">${lb.length} لاعب</span>`;
+    html += `</div>`;
+    if (lb.length > 0) {
+      html += lb.slice(0, 5).map(entry => `
+        <div class="leaderboard-item ${isActive ? '' : 'dimmed'}">
+          <div class="lb-rank">${entry.rank}</div>
+          <div class="lb-info">
+            <span class="lb-name">${entry.name}</span>
+          </div>
+          <div class="lb-score">${entry.totalScore}</div>
+        </div>
+      `).join('');
+      if (lb.length > 5) {
+        html += `<p class="text-muted" style="font-size:0.8rem; text-align:center;">+${lb.length - 5} لاعب آخر</p>`;
+      }
+    } else {
+      html += '<p class="text-muted" style="font-size:0.8rem; text-align:center;">لا يوجد لاعبون</p>';
+    }
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function updatePreviousSessions(sessionsData) {
+  const sessionNames = Object.keys(sessionsData);
+  const listContainer = document.getElementById('previousSessions');
+  const listSection = document.getElementById('existingSessionsList');
+  if (sessionNames.length > 0) {
+    listSection.style.display = 'block';
+    listContainer.innerHTML = sessionNames.map(name => `
+      <button class="btn btn-outline btn-small" onclick="selectExistingSession('${name}')">${name}</button>
+    `).join('');
+  } else {
+    listSection.style.display = 'none';
+  }
+}
+
 /* ========== PLAYERS ========== */
 socket.on('players:update', (playerList) => {
   players = playerList;
@@ -210,7 +324,7 @@ function renderPlayersList(playerList) {
           <span class="online-badge">اونلاين</span>
         </div>
         <div class="player-stats">
-          <span class="stat-badge">السؤال: ${p.currentQuestionIndex}/${p.totalQuestions}</span>
+          <span class="stat-badge">${p.finished ? '✅ انتهى' : 'السؤال: ' + p.currentQuestionIndex + '/' + p.totalQuestions}</span>
           <span class="stat-badge correct">✓ ${p.correctAnswers}</span>
           <span class="stat-badge wrong">✗ ${p.wrongAnswers}</span>
         </div>
@@ -220,12 +334,54 @@ function renderPlayersList(playerList) {
   `).join('');
 }
 
+/* ========== CATEGORIES ========== */
+socket.on('admin:categories', (cats) => {
+  categories = cats;
+  renderCategoriesList(cats);
+  updateCategoryDropdown(cats);
+});
+
+function renderCategoriesList(cats) {
+  const container = document.getElementById('categoriesList');
+  if (!cats || cats.length === 0) {
+    container.innerHTML = '<p class="text-muted">لا توجد أقسام</p>';
+    return;
+  }
+  const sorted = [...cats].sort((a, b) => (a.order || 0) - (b.order || 0));
+  container.innerHTML = sorted.map(cat => {
+    const count = questions.filter(q => q.category === cat.id).length;
+    return `
+      <div class="category-item">
+        <span class="category-order">${cat.order}</span>
+        <span class="category-name">${cat.name}</span>
+        <span class="category-count">${count} سؤال</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateCategoryDropdown(cats) {
+  const select = document.getElementById('qCategory');
+  const currentVal = select.value;
+  select.innerHTML = '';
+  const sorted = [...cats].sort((a, b) => (a.order || 0) - (b.order || 0));
+  sorted.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = cat.name;
+    select.appendChild(opt);
+  });
+  if (currentVal) select.value = currentVal;
+}
+
 /* ========== QUESTIONS CRUD ========== */
 socket.on('admin:questions', (qs) => {
   questions = qs;
   document.getElementById('totalQuestionsCount').textContent = qs.length;
   document.getElementById('questionCountLabel').textContent = qs.length;
   renderQuestionsList(qs);
+  // Re-render categories count
+  if (categories.length > 0) renderCategoriesList(categories);
 });
 
 function renderQuestionsList(qs) {
@@ -241,20 +397,45 @@ function renderQuestionsList(qs) {
     'matching': 'تطابق',
     'ordering': 'ترتيب'
   };
-  container.innerHTML = qs.map(q => `
-    <div class="question-item">
-      <div class="qi-number">${q.id}</div>
-      <div class="qi-content">
-        <span class="qi-type">${typeLabels[q.type] || q.type}</span>
-        <span class="qi-category">${q.category}</span>
-        <div class="qi-text">${q.question}</div>
+  const categoryNames = {};
+  categories.forEach(c => { categoryNames[c.id] = c.name; });
+  
+  // Group by category
+  const grouped = {};
+  qs.forEach(q => {
+    const cat = q.category || 'غير مصنف';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(q);
+  });
+  
+  let html = '';
+  const sortedCats = Object.keys(grouped).sort((a, b) => {
+    const catA = categories.find(c => c.id === a);
+    const catB = categories.find(c => c.id === b);
+    return (catA?.order || 999) - (catB?.order || 999);
+  });
+  
+  for (const catId of sortedCats) {
+    const catName = categoryNames[catId] || catId;
+    html += `<div class="category-group">`;
+    html += `<div class="category-group-header">📂 ${catName} (${grouped[catId].length})</div>`;
+    html += grouped[catId].map(q => `
+      <div class="question-item">
+        <div class="qi-number">${q.id}</div>
+        <div class="qi-content">
+          <span class="qi-type">${typeLabels[q.type] || q.type}</span>
+          <div class="qi-text">${q.question}</div>
+        </div>
+        <div class="qi-actions">
+          <button class="qi-btn" onclick="editQuestion(${q.id})" title="تعديل">✏️</button>
+          <button class="qi-btn delete" onclick="deleteQuestion(${q.id})" title="حذف">🗑️</button>
+        </div>
       </div>
-      <div class="qi-actions">
-        <button class="qi-btn" onclick="editQuestion(${q.id})" title="تعديل">✏️</button>
-        <button class="qi-btn delete" onclick="deleteQuestion(${q.id})" title="حذف">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+    `).join('');
+    html += `</div>`;
+  }
+  
+  container.innerHTML = html;
 }
 
 /* ========== QUESTION FORM ========== */
@@ -264,6 +445,7 @@ function showAddForm() {
   document.getElementById('editQuestionId').value = '';
   clearForm();
   updateFormFields();
+  updateCategoryDropdown(categories);
   document.getElementById('questionForm').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -274,7 +456,7 @@ function cancelForm() {
 
 function clearForm() {
   document.getElementById('qType').value = 'multiple-choice';
-  document.getElementById('qCategory').value = '';
+  document.getElementById('qCategory').value = categories.length > 0 ? categories[0].id : '';
   document.getElementById('qText').value = '';
   document.getElementById('qExplanation').value = '';
   document.querySelectorAll('.mc-option').forEach(el => el.value = '');
@@ -297,12 +479,12 @@ function updateFormFields() {
 
 function saveQuestion() {
   const type = document.getElementById('qType').value;
-  const category = document.getElementById('qCategory').value.trim();
+  const category = document.getElementById('qCategory').value;
   const questionText = document.getElementById('qText').value.trim();
   const explanation = document.getElementById('qExplanation').value.trim();
 
   if (!questionText) { showToast('نص السؤال مطلوب', 'error'); return; }
-  if (!category) { showToast('التصنيف مطلوب', 'error'); return; }
+  if (!category) { showToast('القسم مطلوب', 'error'); return; }
 
   let questionData = { type, category, question: questionText, explanation };
 
@@ -450,6 +632,8 @@ socket.on('connect', () => {
   socket.emit('admin:getPlayers');
   socket.emit('leaderboard:get');
   socket.emit('admin:getQR');
+  socket.emit('admin:getCurrentSession');
+  socket.emit('admin:getSessions');
   refreshQR();
 });
 
@@ -461,4 +645,26 @@ socket.on('disconnect', () => {
 socket.on('connect_error', () => {
   document.querySelector('.status-dot').classList.add('disconnected');
   document.getElementById('connectionStatus').textContent = 'جارٍ إعادة الاتصال...';
+});
+
+socket.on('admin:currentSession', (sessionName) => {
+  currentSession = sessionName;
+  updateSessionBadge(sessionName);
+});
+
+socket.on('admin:sessionChanged', (sessionName) => {
+  currentSession = sessionName;
+  updateSessionBadge(sessionName);
+  showToast(`تم تغيير الجلسة إلى: ${sessionName}`, 'success');
+});
+
+socket.on('admin:error', (msg) => {
+  showToast(msg, 'error');
+});
+
+// Show session modal on load if no session is set
+socket.on('admin:currentSession', (sessionName) => {
+  if (!sessionName) {
+    setTimeout(() => showSessionModal(), 1000);
+  }
 });
